@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -40,19 +40,13 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> saveUserToFirestore(User user) async {
     final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final doc = await ref.get();
-    final now = FieldValue.serverTimestamp();
 
-    if (!doc.exists) {
-      await ref.set({
-        'uid': user.uid,
-        'email': user.email,
-        'isOnline': true,
-        'lastSeen': now,
-      });
-    } else {
-      await ref.update({'isOnline': true, 'lastSeen': now});
-    }
+    await ref.set({
+      'uid': user.uid,
+      'email': user.email ?? '',
+      'isOnline': true,
+      'lastSeen': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> updateLastSeen() async {

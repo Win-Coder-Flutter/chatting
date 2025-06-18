@@ -120,13 +120,19 @@ class _UserListScreenState extends State<UserListScreen> {
               final otherUserId = user.id;
               if (otherUserId == widget.currentUserId) return const SizedBox();
 
+              // Safely get user data as Map
+              final userData = user.data() as Map<String, dynamic>? ?? {};
+              final email = userData['email'] is String
+                  ? userData['email'] as String
+                  : '';
+
               final ids = [widget.currentUserId, otherUserId]..sort();
               final chatDocId = ids.join('_');
               final hasNew = _hasUnreadMap[chatDocId] ?? false;
 
               return _buildUserTile(
                 otherUserId,
-                user['email'] ?? '',
+                email,
                 hasNew,
                 _getStatusText(user),
                 _getStatusColor(user),
@@ -137,14 +143,16 @@ class _UserListScreenState extends State<UserListScreen> {
                       builder: (_) => PrivateChatScreen(
                         currentUserId: widget.currentUserId,
                         otherUserId: otherUserId,
-                        otherUserEmail: user['email'] ?? '',
+                        otherUserEmail: email,
                       ),
                     ),
                   );
 
-                  setState(() {
-                    _hasUnreadMap[chatDocId] = false;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _hasUnreadMap[chatDocId] = false;
+                    });
+                  }
                 },
               );
             },
