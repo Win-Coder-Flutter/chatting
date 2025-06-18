@@ -294,8 +294,8 @@ class _PrivateChatScreenState extends State<PrivateChatScreen>
     if (timestamp is Timestamp) {
       final date = timestamp.toDate();
       final time = TimeOfDay.fromDateTime(date);
-      return "${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} "
-          "${time.hourOfPeriod.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} "
+      return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}"
+          "  ${time.hourOfPeriod.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} "
           "${time.period == DayPeriod.am ? 'AM' : 'PM'}";
     }
     return '';

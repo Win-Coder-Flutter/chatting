@@ -1,4 +1,5 @@
 import 'package:chatting/providers/auth_provider.dart';
+import 'package:chatting/screens/auth_screen.dart';
 import 'package:chatting/screens/login_screen.dart';
 import 'package:chatting/screens/user_list_screen.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             title: "Firebase Chat",
             home: auth.user == null
-                ? const LoginScreen()
+                ? AuthScreen()
                 : UserListScreen(currentUserId: auth.user!.uid),
           );
         },

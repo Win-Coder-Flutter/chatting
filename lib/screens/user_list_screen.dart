@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:chatting/screens/chat_screen.dart';
 import 'package:chatting/screens/logout_screen.dart';
 import 'package:flutter/material.dart';
@@ -16,28 +15,76 @@ class UserListScreen extends StatefulWidget {
 }
 
 class _UserListScreenState extends State<UserListScreen> {
-  final Set<String> _readChats = {};
-  final Map<String, bool> _lastReadsLoaded = {};
+  final Map<String, bool> _hasUnreadMap = {};
+  final Set<String> _listenersAdded = {};
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
 
-    // Timer to refresh UI every minute for real-time last seen update
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) {
-        setState(() {
-          // Just rebuild to update last seen text
-        });
-      }
+      if (mounted) setState(() {});
     });
+
+    _startMessageListeners();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  void _startMessageListeners() {
+    FirebaseFirestore.instance.collection('users').snapshots().listen((
+      userSnap,
+    ) {
+      for (var user in userSnap.docs) {
+        final otherUserId = user.id;
+        if (otherUserId == widget.currentUserId) continue;
+
+        final ids = [widget.currentUserId, otherUserId]..sort();
+        final chatDocId = ids.join('_');
+
+        if (_listenersAdded.contains(chatDocId)) continue;
+        _listenersAdded.add(chatDocId);
+
+        FirebaseFirestore.instance
+            .collection('chats')
+            .doc(chatDocId)
+            .collection('messages')
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .snapshots()
+            .listen((msgSnap) async {
+              if (msgSnap.docs.isEmpty) return;
+
+              final lastMsg = msgSnap.docs.first.data();
+              final lastSenderId = lastMsg['senderId'];
+              final lastMsgTime = (lastMsg['timestamp'] as Timestamp?)
+                  ?.toDate();
+
+              final lastReadsDoc = await FirebaseFirestore.instance
+                  .collection('lastReads')
+                  .doc(chatDocId)
+                  .get();
+
+              final readMap = lastReadsDoc.data() ?? {};
+              final lastReadTime = (readMap[widget.currentUserId] as Timestamp?)
+                  ?.toDate();
+
+              final isNew =
+                  lastMsgTime != null &&
+                  (lastReadTime == null || lastMsgTime.isAfter(lastReadTime)) &&
+                  lastSenderId != widget.currentUserId;
+
+              setState(() {
+                _hasUnreadMap[chatDocId] = isNew;
+              });
+            });
+      }
+    });
   }
 
   @override
@@ -47,13 +94,13 @@ class _UserListScreenState extends State<UserListScreen> {
         title: const Text('Users'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.logout),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => LogoutScreen()),
+                MaterialPageRoute(builder: (_) => LogoutScreen()),
               );
             },
-            icon: Icon(Icons.logout),
           ),
         ],
       ),
@@ -71,147 +118,33 @@ class _UserListScreenState extends State<UserListScreen> {
             itemBuilder: (context, index) {
               final user = users[index];
               final otherUserId = user.id;
-
               if (otherUserId == widget.currentUserId) return const SizedBox();
 
               final ids = [widget.currentUserId, otherUserId]..sort();
               final chatDocId = ids.join('_');
+              final hasNew = _hasUnreadMap[chatDocId] ?? false;
 
-              return StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('chats')
-                    .doc(chatDocId)
-                    .collection('messages')
-                    .orderBy('timestamp', descending: true)
-                    .limit(1)
-                    .snapshots(),
-                builder: (context, msgSnapshot) {
-                  bool hasNew = false;
-
-                  if (msgSnapshot.hasData &&
-                      msgSnapshot.data!.docs.isNotEmpty) {
-                    final lastMsgDoc = msgSnapshot.data!.docs.first;
-                    final lastSenderId = lastMsgDoc['senderId'];
-                    final lastMsgTime = (lastMsgDoc['timestamp'] as Timestamp?)
-                        ?.toDate();
-
-                    if (lastMsgTime != null) {
-                      return StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('lastReads')
-                            .doc(chatDocId)
-                            .snapshots(),
-                        builder: (context, readSnapshot) {
-                          if (readSnapshot.connectionState ==
-                                  ConnectionState.active ||
-                              readSnapshot.connectionState ==
-                                  ConnectionState.done) {
-                            _lastReadsLoaded[chatDocId] = true;
-                          }
-
-                          if (!_lastReadsLoaded.containsKey(chatDocId)) {
-                            // Avoid flicker before lastReads loaded
-                            return _buildUserTile(
-                              otherUserId,
-                              user['email'] ?? '',
-                              false,
-                              _getStatusText(user),
-                              _getStatusColor(user),
-                              onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PrivateChatScreen(
-                                      currentUserId: widget.currentUserId,
-                                      otherUserId: otherUserId,
-                                      otherUserEmail: user['email'] ?? '',
-                                    ),
-                                  ),
-                                );
-
-                                _readChats.add(chatDocId);
-                                await Future.delayed(
-                                  const Duration(milliseconds: 500),
-                                );
-                                setState(() {});
-                              },
-                            );
-                          }
-
-                          final readData =
-                              readSnapshot.data?.data()
-                                  as Map<String, dynamic>?;
-
-                          final lastReadTime =
-                              (readData?[widget.currentUserId] as Timestamp?)
-                                  ?.toDate();
-
-                          final isFromOtherUser =
-                              lastSenderId != widget.currentUserId;
-
-                          if (_readChats.contains(chatDocId)) {
-                            hasNew = false;
-                          } else {
-                            hasNew =
-                                isFromOtherUser &&
-                                (lastReadTime == null ||
-                                    lastMsgTime.isAfter(lastReadTime));
-                          }
-
-                          return _buildUserTile(
-                            otherUserId,
-                            user['email'] ?? '',
-                            hasNew,
-                            _getStatusText(user),
-                            _getStatusColor(user),
-                            onTap: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PrivateChatScreen(
-                                    currentUserId: widget.currentUserId,
-                                    otherUserId: otherUserId,
-                                    otherUserEmail: user['email'] ?? '',
-                                  ),
-                                ),
-                              );
-
-                              _readChats.add(chatDocId);
-                              await Future.delayed(
-                                const Duration(milliseconds: 500),
-                              );
-                              setState(() {});
-                            },
-                          );
-                        },
-                      );
-                    }
-                  }
-
-                  // No last message, so no unread
-                  return _buildUserTile(
-                    otherUserId,
-                    user['email'] ?? '',
-                    false,
-                    _getStatusText(user),
-                    _getStatusColor(user),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PrivateChatScreen(
-                            currentUserId: widget.currentUserId,
-                            otherUserId: otherUserId,
-                            otherUserEmail: user['email'] ?? '',
-                          ),
-                        ),
-                      );
-
-                      _readChats.add(chatDocId);
-                      await Future.delayed(const Duration(milliseconds: 500));
-                      setState(() {});
-                    },
+              return _buildUserTile(
+                otherUserId,
+                user['email'] ?? '',
+                hasNew,
+                _getStatusText(user),
+                _getStatusColor(user),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PrivateChatScreen(
+                        currentUserId: widget.currentUserId,
+                        otherUserId: otherUserId,
+                        otherUserEmail: user['email'] ?? '',
+                      ),
+                    ),
                   );
+
+                  setState(() {
+                    _hasUnreadMap[chatDocId] = false;
+                  });
                 },
               );
             },
@@ -230,24 +163,18 @@ class _UserListScreenState extends State<UserListScreen> {
     if (lastSeen != null) {
       final diff = DateTime.now().difference(lastSeen);
 
-      if (diff.inMinutes < 1) {
-        return "Active Now";
-      } else if (diff.inMinutes < 60) {
-        return "Last seen ${diff.inMinutes} min ago";
-      } else if (diff.inHours < 24) {
-        return "Last seen ${diff.inHours} hr ago";
-      } else {
-        return "Last seen on ${lastSeen.day}/${lastSeen.month}/${lastSeen.year}";
-      }
+      if (diff.inMinutes < 1) return "Active Now";
+      if (diff.inMinutes < 60) return "Last seen ${diff.inMinutes} min ago";
+      if (diff.inHours < 24) return "Last seen ${diff.inHours} hr ago";
+
+      return "Last seen on ${lastSeen.day}/${lastSeen.month}/${lastSeen.year}";
     }
 
     return "Offline";
   }
 
   Color _getStatusColor(QueryDocumentSnapshot user) {
-    final isOnline = user['isOnline'] ?? false;
-    if (isOnline) return Colors.green;
-    return Colors.grey;
+    return user['isOnline'] ?? false ? Colors.green : Colors.grey;
   }
 
   Widget _buildUserTile(
