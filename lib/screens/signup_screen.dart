@@ -1,23 +1,24 @@
 import 'package:chatting/providers/auth_provider.dart';
-import 'package:chatting/screens/signup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
+
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignUpScreenState extends State<SignUpScreen> {
   final emailCtrl = TextEditingController();
   final passwordCtrl = TextEditingController();
   String? error;
 
-  void login() async {
+  void signUp() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      await auth.login(emailCtrl.text.trim(), passwordCtrl.text);
+      await auth.signUp(emailCtrl.text.trim(), passwordCtrl.text);
+      Navigator.pop(context); // Go back to login after successful sign up
     } catch (e) {
       setState(() => error = e.toString());
     }
@@ -26,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
+      appBar: AppBar(title: const Text("Sign Up")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -43,17 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: login, child: const Text("Login")),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                );
-              },
-              child: const Text("Don't have an account? Sign Up"),
-            ),
+            ElevatedButton(onPressed: signUp, child: const Text("Sign Up")),
           ],
         ),
       ),

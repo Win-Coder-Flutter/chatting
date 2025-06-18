@@ -9,6 +9,7 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider() {
     _auth.authStateChanges().listen((user) {
       _user = user;
+      if (_user != null) updateLastSeen();
       notifyListeners();
     });
   }
@@ -19,6 +20,19 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
       await saveUserToFirestore(_auth.currentUser!);
+      await updateLastSeen();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> signUp(String email, String password) async {
+    try {
+      await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      await saveUserToFirestore(_auth.currentUser!);
     } catch (e) {
       rethrow;
     }
@@ -27,10 +41,38 @@ class AuthProvider extends ChangeNotifier {
   Future<void> saveUserToFirestore(User user) async {
     final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
     final doc = await ref.get();
+    final now = FieldValue.serverTimestamp();
+
     if (!doc.exists) {
-      await ref.set({'uid': user.uid, 'email': user.email});
+      await ref.set({
+        'uid': user.uid,
+        'email': user.email,
+        'isOnline': true,
+        'lastSeen': now,
+      });
+    } else {
+      await ref.update({'isOnline': true, 'lastSeen': now});
     }
   }
 
-  Future<void> logout() async => await _auth.signOut();
+  Future<void> updateLastSeen() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'isOnline': true,
+        'lastSeen': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+  }
+
+  Future<void> logout() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'isOnline': false,
+        'lastSeen': FieldValue.serverTimestamp(),
+      });
+    }
+    await _auth.signOut();
+  }
 }
