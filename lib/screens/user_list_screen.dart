@@ -195,62 +195,108 @@ class _UserListScreenState extends State<UserListScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        tileColor: hasNew ? Colors.red[50] : Colors.grey[100],
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: hasNew ? Colors.red[400] : Colors.blueGrey[400],
-          child: Text(
-            email.isNotEmpty ? email[0].toUpperCase() : '?',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          email,
-          style: TextStyle(
-            fontWeight: hasNew ? FontWeight.bold : FontWeight.normal,
-            color: hasNew ? Colors.black : Colors.grey[800],
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (hasNew)
-              const Text(
-                "New message",
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            Row(
+      child: Material(
+        elevation: hasNew ? 4 : 1,
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
               children: [
-                if (status == "Active Now")
-                  Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.green,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: hasNew
+                          ? Colors.redAccent
+                          : Colors.blueGrey,
+                      child: Text(
+                        email.isNotEmpty ? email[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
                     ),
+                    if (hasNew)
+                      const Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: CircleAvatar(
+                          radius: 8,
+                          backgroundColor: Colors.white,
+                          child: Icon(
+                            Icons.mark_email_unread,
+                            color: Colors.red,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        email,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: hasNew
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (status == "Active Now")
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          Text(
+                            status,
+                            style: TextStyle(fontSize: 12, color: statusColor),
+                          ),
+                        ],
+                      ),
+                      if (hasNew)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Text(
+                            "New message",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                Text(
-                  status,
-                  style: TextStyle(color: statusColor, fontSize: 12),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey,
                 ),
               ],
             ),
-          ],
+          ),
         ),
-        trailing: hasNew
-            ? const Icon(Icons.mark_email_unread, color: Colors.red)
-            : null,
-        onTap: onTap,
       ),
     );
   }

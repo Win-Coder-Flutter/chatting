@@ -241,7 +241,7 @@ class _PrivateChatScreenState extends State<PrivateChatScreen>
                                   ? CrossAxisAlignment.end
                                   : CrossAxisAlignment.start,
                               children: [
-                                Text(msg['text']),
+                                SelectableText(msg['text']),
                                 const SizedBox(height: 4),
                                 Text(
                                   _formatTimestamp(msg['timestamp']),
@@ -262,24 +262,39 @@ class _PrivateChatScreenState extends State<PrivateChatScreen>
             ),
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: msgCtrl,
                       focusNode: focusNode,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Type your message...',
-                        border: OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                       onSubmitted: (_) => sendMessage(),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: sendMessage,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: sendMessage,
+                    ),
                   ),
                 ],
               ),
