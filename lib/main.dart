@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
         builder: (context, auth, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            title: "Firebase Chat",
+            title: "K & A Chat",
             home: auth.user == null
                 ? AuthScreen()
                 : UserListScreen(currentUserId: auth.user!.uid),
